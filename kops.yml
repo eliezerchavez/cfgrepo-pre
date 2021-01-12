@@ -1,0 +1,181 @@
+all: 
+  children:
+    k8s:
+      children:
+        k8s-master:
+          hosts:
+            s499vs52:
+              ansible_host: '{cipher}AgBNZazNFUdxPBow66xTRnkvQEVaFVb6Ptfe/688E2a4YAFYAmpgZfTvtvhhPd4+jY5rklXrCdwHJynINUDyXTn14NnZWZKNhMhLLG1DQ6f8KX7Ef/S6BjQ7zwMtoxIx+cGIetvPKVdQo4kO8RAPS8GCoLceS7bBIVTcIe1FJQCdYbdZ1xGR8OXcAjx8m4ysvXYJcY+7kq7RUFPT9btvPBQAKLfBxPE5lvfXSrPNIKDlpppSoJvEXUUcAT833lp7v6il6qweZzm7223oj4U3RdQRa+OIO9/kAQwQFpdkZYSwX9YxIjP2nllxMBziURReON/CCeK80SRudERen0UO3DjEKDlOQ57R8luNQ0ZdOcDnXw2pXvatXruXiS90Urx/4OuIfE7hwpcoS11hEerR06tmdTlAYqpCFggQFIzCqLrd2ZiWmBdV2OUibu1PiIJlapP72nfGhEaVymT5rpsDxAdaqxB3ksqUxdY8cRDRlBwIbQ8ZTbLNBqJvhwkYEihSLeOlkb8kXz9l+AfyOS7VO/p/nhIHfvR2WwUaNRN/dyyd9UmRGIjhl/7UERbWlKgwbdnjByIR1kjPRknnxSfySFHXSPUThHIK6oq0PnpZBu7AKVxd4YAE/gHNCc74+JdPHJnqS9GN3GtJyFZ2Le0oAxwGNwmTLBKjQ6P4JwzXbtavjYWhVIYpK2f/F86h2SZhS/q9UReoI43SqKl7jzweWqda+X7xIFJBSAdRuUgTkAnRuZ97Qpx72f5oi2YBtY9ZuLQ='
+              k8s_master_leader: true
+              keepalived_config:
+                scripts:
+                - fall: 10
+                  interval: 3
+                  name: 'check_haproxy'
+                  rise: 2
+                  script: 'killall -0 haproxy'
+                  weight: -2
+                instances:
+                - name: 'VRRP1'
+                  state: 'MASTER'
+                  interface: 'ens192'
+                  virtual_router_id: 41
+                  priority: 150
+                  virtual_ipaddress: '10.11.192.50/23'
+                  track_script: 'check_haproxy'
+            s499vs54:
+              ansible_host: 10.11.192.54
+            s499vs56:
+              ansible_host: 10.11.192.56
+          vars:
+            # haproxy
+            haproxy_config:
+              frontend:
+              - name: 'k8s-apiserver'
+                mode: 'tcp'
+                bind: '*:16443'
+                option: 'tcplog'
+                default_backend: 'k8s-apiserver'
+              backend:
+              - name: 'k8s-apiserver'
+                mode: 'tcp'
+                balance: 'roundrobin'
+                servers:
+                - name: 's499vs52'
+                  bind: '10.11.192.52:6443'
+                - name: 's499vs54'
+                  bind: '10.11.192.54:6443'
+                - name: 's499vs56'
+                  bind: '10.11.192.56:6443'
+            
+            # k8s
+            k8s_apiserver_lb_host: 'k8s.apiserver.eliezerchavez.com'
+            k8s_cluster_name: 'toolchain'
+            k8s_master_config:
+            # https://stackoverflow.com/questions/46726216/kubelet-fails-to-get-cgroup-stats-for-docker-and-kubelet-services
+            # https://github.com/kubernetes/kops/issues/4049
+            - backup: true
+              backrefs: true
+              line: '\1 --runtime-cgroups=/systemd/system.slice --kubelet-cgroups=/systemd/system.slice'
+              path: '/etc/sysconfig/kubelet'
+              regexp: '^(KUBELET_EXTRA_ARGS=(?!.*--runtime-cgroups=/systemd/system.slice --kubelet-cgroups=/systemd/system.slice).*)$'
+            k8s_master_multi: true
+            k8s_networking_dns_domain: 'eliezerchavez.com'
+            k8s_node: 'master'
+
+            # keepalived
+            keepalived_config:
+              scripts:
+              - fall: 10
+                interval: 3
+                name: 'check_haproxy'
+                rise: 2
+                script: 'killall -0 haproxy'
+                weight: -2
+              instances:
+              - name: 'VRRP1'
+                state: 'BACKUP'
+                interface: 'ens192'
+                virtual_router_id: 41
+                priority: 100
+                virtual_ipaddress: '10.11.192.50/23'
+                track_script: 'check_haproxy'
+            
+            #vmware
+            vmware_guest_disk:
+            - size_gb: 110
+              type: 'thin'
+            - size_gb: 40
+              type: 'thin'
+            vmware_guest_folder: 'k8s/master'
+            vmware_guest_template: 'templates/RHEL7K8SM_1562603101'
+        k8s-worker:
+          hosts:
+            s499vs70:
+              ansible_host: 10.11.192.70
+            s499vs72:
+              ansible_host: 10.11.192.72
+            s499vs74:
+              ansible_host: 10.11.192.74
+            s499vs76:
+              ansible_host: 10.11.192.76
+            s499vs78:
+              ansible_host: 10.11.192.78
+            s499vs80:
+              ansible_host: 10.11.192.80
+          vars:
+            # k8s
+            k8s_worker_config:
+            # https://stackoverflow.com/questions/46726216/kubelet-fails-to-get-cgroup-stats-for-docker-and-kubelet-services
+            # https://github.com/kubernetes/kops/issues/4049
+            - backup: true
+              backrefs: true
+              line: '\1 --runtime-cgroups=/systemd/system.slice --kubelet-cgroups=/systemd/system.slice'
+              path: '/etc/sysconfig/kubelet'
+              regexp: '^(KUBELET_EXTRA_ARGS=(?!.*--runtime-cgroups=/systemd/system.slice --kubelet-cgroups=/systemd/system.slice).*)$'
+  vars:
+    # docker
+    docker_config:
+    - backup: true
+      line: 'HTTP_PROXY=http://10.11.1.50:3128'
+      path: '/etc/sysconfig/docker'
+      regexp: '^HTTP_PROXY='
+    - line: 'HTTPS_PROXY=http://10.11.1.50:3128'
+      path: '/etc/sysconfig/docker'
+      regexp: '^HTTPS_PROXY='
+    - line: 'NO_PROXY=127.0.0.1,localhost,.eliezerchavez.com,10.0.0.0/8'
+      path: '/etc/sysconfig/docker'
+      regexp: '^NO_PROXY='
+
+    docker_storage_setup:
+    - option: 'STORAGE_DRIVER'
+      value: 'devicemapper'
+    - option: 'SETUP_LVM_THIN_POOL'
+      value: 'yes'
+    - option: 'VG'
+      value: 'vg_docker'
+    
+    # lvm
+    lvm_devices:
+    - '/dev/sdb'
+    lvm_groups:
+    - pvs: '/dev/sdb1'
+      vg: 'vg_docker'
+
+    # os
+    os_proxy:
+      http_proxy: "http://10.11.1.50:3128"
+      https_proxy: "http://10.11.1.50:3128"
+      no_proxy: "127.0.0.1,localhost,.eliezerchavez.com,10.0.0.0/8"
+
+    # vmware
+    vmware_guest_cluster: 'ClusterDev'
+    vmware_guest_datacenter: 'DevOps'
+    vmware_guest_datastore: 'DevOps_DS1'
+    vmware_guest_disk:
+    - size_gb: 110
+      type: 'thin'
+    - size_gb: 40
+      type: 'thin'
+    - size_gb: 40
+      type: 'thin'
+    vmware_guest_folder: 'k8s/worker'
+    vmware_guest_hardware:
+          memory_mb: 16384
+          num_cpus: 8
+    vmware_guest_hostname: 's100dev1.grupoib.local'
+    vmware_guest_name: '{{ inventory_hostname }}'
+    vmware_guest_networks:
+        - gateway: 10.11.192.1
+          ip: '{{ hostvars[inventory_hostname].ansible_host }}'
+          name: 'VLAN_68'
+          netmask: 255.255.254.0
+          type: 'static'
+    vmware_guest_customization:
+          domain: 'grupoib.local'
+          dns_servers:
+            - 10.10.1.2
+            - 10.11.1.2
+    vmware_guest_password: '{{ lookup("env","VCENTER_PASSWORD") }}'
+    vmware_guest_template: 'templates/RHEL7K8SW_1562606268'
+    vmware_guest_username: 'devops@grupoib.local'
