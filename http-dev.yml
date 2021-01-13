@@ -1,0 +1,37 @@
+http:
+  error:
+    codes:
+      1xx:
+        description: 'Informational'
+        codes:
+        - code: 100
+          description: 'Continue'
+        - code: 101
+          description: 'Switching Protocols'
+        - code: 102
+          description: 'Processing (WebDAV; RFC 2518)'
+        - code: 103
+          description: '103 Early Hints (RFC 8297)'
+      2xx:
+        description: 'Success'
+        codes:
+        - code: 200
+          description: 'OK'
+        - code: 201
+          description: 'Created'
+        - code: 202
+          description: 'Accepted'
+        - code: 203
+          description: 'Non-Authoritative Information (since HTTP/1.1)'
+        - code: 204
+          description: 'No Content'
+        - code: 205
+          description: 'Reset Content'
+        - code: 206
+          description: 'Partial Content (RFC 7233)'
+        - code: 207
+          description: 'Multi-Status (WebDAV; RFC 4918)'
+        - code: 208
+          description: 'Already Reported (WebDAV; RFC 5842)'
+        - code: 226
+          description: 'IM Used (RFC 3229)'
